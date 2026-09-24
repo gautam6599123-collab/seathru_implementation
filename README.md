@@ -2,10 +2,6 @@
 
 This is an implementation of the paper "*Sea-Thru*: A Method for Removing Water from Underwater Images, Akkaynak & Treibitz, CVPR 2019".
 
-## Implementation Details
-
-
-
 ## Citation
 
 Please cite this repository as:
