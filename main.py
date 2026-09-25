@@ -282,45 +282,6 @@ def linear_to_srgb(x: np.ndarray) -> np.ndarray:
 
 
 # %%
-
-# 1. Load the input image and corresponding depth map
-# (Replace these with the actual paths to your D1 dataset files)
-image_path = Path("data/example.png")
-depth_path = Path("data/example.tif")
-
-I = load_img(image_path)
-z = load_depth(depth_path)
-
-# 2. Estimate the backscatter parameters using the dark pixel prior
-params, _, _ = estimate_backscatter(I, z)
-
-# 3. Generate the backscatter map (B) and the isolated direct signal (D)
-B, D = remove_backscatter(I, z, params)
-
-# 4. Construct the plot to match the reference layout
-fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-
-# Plot 1: Original Input
-axes[0].imshow(linear_to_srgb(I))
-axes[0].set_title("D1 input")
-axes[0].axis("off")
-
-# Plot 2: Estimated Backscatter
-axes[1].imshow(linear_to_srgb(B))
-axes[1].set_title("D1 estimated B")
-axes[1].axis("off")
-
-# Plot 3: Direct Signal (I - B)
-axes[2].imshow(linear_to_srgb(D))
-axes[2].set_title("D1 D = I-B")
-axes[2].axis("off")
-
-# Minimize whitespace between subplots
-plt.tight_layout()
-plt.show()
-
-
-# %%
 def shift(a: np.ndarray, dy: int, dx: int, fill: float = 0.0) -> np.ndarray:
     """
     Shifts a 2D or 3D NumPy array spatially by (dy, dx) pixels.
@@ -465,52 +426,6 @@ def lsac(
     E = np.clip(E, 0.0, 1.0)
 
     return E, a, eps, n_iterations, history
-
-
-# %%
-# Run the LSAC estimation using the arrays computed in previous steps
-E, a, eps, n_iterations, history = lsac(D, z, verbose=True)
-
-# Convert the history list to a NumPy array for easy column slicing
-history_array = np.array(history)
-
-# Plot 1: LSAC Convergence
-plt.figure(figsize=(10, 6))
-
-# Plot each channel's median history.
-# Matplotlib's default color cycle (C0=blue, C1=orange, C2=green)
-# naturally matches the R, G, B legend in the reference image.
-plt.plot(history_array[:, 0], label="R")
-plt.plot(history_array[:, 1], label="G")
-plt.plot(history_array[:, 2], label="B")
-
-plt.title("D1: LSAC convergence")
-plt.xlabel("LSAC iteration")
-plt.ylabel("Median a")
-plt.legend()
-plt.grid(True, alpha=0.4)  # Light grid to match the reference
-plt.tight_layout()
-plt.show()
-
-fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-# Left Plot: The raw converged illuminant map E.
-# We wrap it in linear_to_srgb so the dark linear values are visible on a monitor.
-axes[0].imshow(linear_to_srgb(E))
-axes[0].set_title("D1: converged illuminant")
-axes[0].axis("off")
-
-# Right Plot: The normalized illuminant RGB map.
-# By dividing E by its maximum value before sRGB conversion, the overall
-# intensity is scaled up, revealing the scene's ambient color cast structure
-# much more clearly.
-E_normalized = E / np.max(E)
-axes[1].imshow(linear_to_srgb(E_normalized))
-axes[1].set_title("D1: illuminant RGB")
-axes[1].axis("off")
-
-plt.tight_layout()
-plt.show()
 
 
 # %%
@@ -676,51 +591,3 @@ def gray_world(J: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     Js = np.clip(x * scale[None, None, :], 0.0, 1.0)
 
     return Js, mean, scale
-
-
-# %%
-# 1. Coarse Wideband Attenuation Estimation
-# Computes the noisy beta_D for all channels simultaneously
-beta_c = coarse_beta(E, z)
-
-# 2. Refine Beta for each color channel
-refined_params = []
-for c in range(3):
-    # Pass the depth, single-channel illuminant, and single-channel coarse beta
-    fit = refine_beta(z, E[..., c], beta_c[..., c], seed=42 + c)
-    refined_params.append(fit["params"])
-
-# 3. Construct the Full Spatial Beta Map
-# Evaluates the two-term exponential model across the entire depth map
-beta_map = np.zeros_like(D)
-for c in range(3):
-    beta_map[..., c] = beta_model(z, *refined_params[c])
-
-# 4. Scene Reconstruction
-# Reverses the attenuation on the direct signal to recover the original colors
-J = reconstruct_scene(D, z, beta_map)
-
-# 5. Global White Balance
-# Corrects the overarching color cast using the Gray World assumption
-Js, channel_means, scale_factors = gray_world(J)
-
-fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-
-# Ensure all linear outputs are converted to sRGB for monitor display
-axes[0].imshow(linear_to_srgb(I))
-axes[0].set_title("Original Input (I)")
-axes[0].axis("off")
-
-axes[1].imshow(linear_to_srgb(J))
-axes[1].set_title("Reconstructed Scene (J)")
-axes[1].axis("off")
-
-axes[2].imshow(linear_to_srgb(Js))
-axes[2].set_title("White Balanced (Js)")
-axes[2].axis("off")
-
-plt.tight_layout()
-plt.show()
-
-# Optional: Print the scale factors to see how much each channel was shifted
-print(f"Gray World Scale Factors (R, G, B): {scale_factors}")
