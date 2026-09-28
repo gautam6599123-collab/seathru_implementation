@@ -665,6 +665,12 @@ wheels = [
 ]
 
 [[package]]
+name = "logging"
+version = "0.4.9.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/4b/979db9e44be09f71e85c9c8cfc42f258adfb7d93ce01deed2788b2948919/logging-0.4.9.6.tar.gz", hash = "sha256:26f6b50773f085042d301085bd1bf5d9f3735704db9f37c1ce6d8b85c38f2417", size = 96029, upload-time = "2013-06-04T23:43:22.086Z" }
+
+[[package]]
 name = "matplotlib"
 version = "3.11.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1356,6 +1362,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "imageio" },
     { name = "ipykernel" },
+    { name = "logging" },
     { name = "matplotlib" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -1367,6 +1374,7 @@ dependencies = [
 requires-dist = [
     { name = "imageio", specifier = ">=2.37.4" },
     { name = "ipykernel", specifier = ">=7.3.0" },
+    { name = "logging", specifier = ">=0.4.9.6" },
     { name = "matplotlib", specifier = ">=3.11.2" },
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "tifffile", specifier = ">=2026.3.3" },

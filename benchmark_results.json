@@ -1,0 +1,16 @@
+[
+    {
+        "image": "example.png",
+        "resolution": [
+            1596,
+            2400
+        ],
+        "io_time_sec": 0.4025091180083109,
+        "backscatter_time_sec": 10.132980674999999,
+        "lsac_time_sec": 652.4797219769971,
+        "beta_map_sec": 47.45039616098802,
+        "t_reconstruct": 0.25693370000226423,
+        "total_time_sec": 710.7225416309957,
+        "lsac_iterations": 634
+    }
+]

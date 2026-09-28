@@ -1,0 +1,5 @@
+2026-09-27 19:30:03 | INFO | Starting benchmark on 1 images...
+2026-09-27 19:30:03 | INFO | Hardware: 11th Gen Intel i5-1135G7 (8) @ 4.200GHz & Intel TigerLake-LP GT2 [Iris Xe Graphics]
+2026-09-27 19:41:53 | INFO | [example.png] Res: (1596, 2400) | Total: 710.72s | IO: 0.40s | B_est: 10.13s | LSAC: 652.48s (634 iters)
+2026-09-27 19:41:53 | INFO | Benchmarking complete. Total time: 710.72s
+2026-09-27 19:41:53 | INFO | Structured metrics saved to benchmark_results.json
