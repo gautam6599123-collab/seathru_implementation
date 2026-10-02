@@ -3,7 +3,6 @@ from pathlib import Path
 
 import imageio.v3 as iio
 import numpy as np
-
 from benchmark import benchmark_seathru
 from seathru import (
     coarse_beta,

@@ -1,10 +1,12 @@
 # %%
 
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 
 from dataset.dataset import CUDAPrefetcher, DataLoader, SeaThruDataset
 from functions.fit_b_channel import estimate_backscatter_for_batch
-from functions.functions import B_map_gpu, remove_backscatter_gpu
+from functions.functions import remove_backscatter_gpu
 
 # %%
 

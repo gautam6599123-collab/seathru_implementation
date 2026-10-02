@@ -3,7 +3,7 @@
 import numpy as np
 import tifffile
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 from torchcodec.decoders import decode_image
 
 # %%
