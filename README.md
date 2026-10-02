@@ -1,7 +1,6 @@
-Sea-Thru: A Method for Removing Water from Underwater Images
-An implementation of the method described in:
-Akkaynak, D. and Treibitz, T. "Sea-Thru: A Method for Removing Water
-from Underwater Images." CVPR, 2019.
+# Sea-Thru: A Method for Removing Water from Underwater Images
+An implementation of the method described in: `Akkaynak, D. and Treibitz, T. "Sea-Thru: A Method for Removing Water
+from Underwater Images." CVPR, 2019.`
 
 This repository contains a physics-based implementation of Sea-Thru for
 estimating and removing the veiling-light/backscatter component in
