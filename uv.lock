@@ -1737,6 +1737,7 @@ dependencies = [
     { name = "torch" },
     { name = "torchcodec" },
     { name = "torchvision" },
+    { name = "triton" },
 ]
 
 [package.metadata]
@@ -1750,6 +1751,7 @@ requires-dist = [
     { name = "torch", specifier = ">=2.14.0" },
     { name = "torchcodec", specifier = ">=0.16.0" },
     { name = "torchvision", specifier = ">=0.29.0" },
+    { name = "triton", specifier = ">=3.8.0" },
 ]
 
 [[package]]
