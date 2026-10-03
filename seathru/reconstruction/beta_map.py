@@ -9,16 +9,36 @@ def beta_model_gpu(z, params):
     """
     Two-term exponential attenuation model.
 
-    z:      [B, 1, 1, S]
-    params: [B, C, R, 4] with order [a, b, c, d]
+    Full-resolution mode:
+        z:      [B, 1, H, W]
+        params: [B, C, 4]
+        output: [B, C, H, W]
 
-    Returns:
-        beta: [B, C, R, S]
+    Fitting mode:
+        z:      [B, 1, 1, S]
+        params: [B, C, R, 4]
+        output: [B, C, R, S]
     """
-    a = params[..., 0].unsqueeze(-1)
-    b = params[..., 1].unsqueeze(-1)
-    c = params[..., 2].unsqueeze(-1)
-    d = params[..., 3].unsqueeze(-1)
+
+    if params.ndim == 3:
+        # Full-resolution mode: params [B, C, 4]
+        a = params[..., 0, None, None]  # [B, C, 1, 1]
+        b = params[..., 1, None, None]
+        c = params[..., 2, None, None]
+        d = params[..., 3, None, None]
+
+        if z.ndim == 3:
+            z = z.unsqueeze(1)  # [B, 1, H, W]
+
+    elif params.ndim == 4:
+        # Fitting mode: params [B, C, R, 4]
+        a = params[..., 0].unsqueeze(-1)  # [B, C, R, 1]
+        b = params[..., 1].unsqueeze(-1)
+        c = params[..., 2].unsqueeze(-1)
+        d = params[..., 3].unsqueeze(-1)
+
+    else:
+        raise ValueError(f"params must have 3 or 4 dimensions, got {params.shape}")
 
     return a * torch.exp(b * z) + c * torch.exp(d * z)
 
@@ -285,3 +305,22 @@ def refine_beta_batch(
         ).squeeze(2)
 
     return best_params, best_loss
+
+
+# %%
+
+B, C, H, W, R, S = 1, 3, 1596, 2400, 10, 100
+
+z_map = torch.rand(B, 1, H, W, device="cuda")
+params_map = torch.rand(B, C, 4, device="cuda")
+
+beta_map = beta_model_gpu(z_map, params_map)
+print("Map mode:", beta_map.shape)
+# Expected: [1, 3, 1596, 2400]
+
+z_fit = torch.rand(B, 1, 1, S, device="cuda")
+params_fit = torch.rand(B, C, R, 4, device="cuda")
+
+beta_fit = beta_model_gpu(z_fit, params_fit)
+print("Fit mode:", beta_fit.shape)
+# Expected: [1, 3, 10, 100]

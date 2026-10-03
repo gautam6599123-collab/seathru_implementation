@@ -28,8 +28,8 @@ def main():
     # -----------------------------
 
     pairs = [
-        # ("data/example.png", "data/example.tif"),
         ("data/T_S02958.png", "data/depthT_S02958.tif"),
+        # Add more image/depth pairs here
     ]
 
     batch_size = 2
@@ -72,19 +72,22 @@ def main():
         if batch is None:
             break
 
-        image = batch["image"]
-        depth = batch["depth"]
+        image = batch["image"]  # [B, 3, H, W]
+        depth = batch["depth"]  # [B, 1, H, W]
 
         print("Image:", image.shape, image.device)
         print("Depth:", depth.shape, depth.device)
 
-        # Estimate backscatter parameters
-        params, losses = estimate_backscatter_for_batch(
-            image,
-            depth,
-        )
+        # ---------------------------------
+        # 1. Estimate backscatter parameters
+        # ---------------------------------
 
-        # Remove backscatter
+        params, losses = estimate_backscatter_for_batch(image, depth)
+
+        # ---------------------------------
+        # 2. Remove backscatter
+        # ---------------------------------
+
         with torch.no_grad():
             backscatter, corrected = remove_backscatter_gpu(
                 I=image,
@@ -98,19 +101,50 @@ def main():
         print("Fit losses [B, C]:")
         print(losses)
 
-        show_backscatter_results(
-            image,
-            backscatter,
-            corrected,
-        )
+        show_backscatter_results(image, backscatter, corrected)
 
-        E, _, _, _, _ = lsac_triton(corrected, depth)
+        # ---------------------------------
+        # 3. LSAC refinement, one image at a time
+        # ---------------------------------
+
+        E_batch = []
+
+        with torch.no_grad():
+            for i in range(corrected.shape[0]):
+                # NCHW -> HWC, as required by lsac_triton
+                D_i = corrected[i].permute(1, 2, 0).contiguous()
+
+                # [1, H, W] -> [H, W]
+                z_i = depth[i, 0].contiguous()
+
+                E_i, _, _, _, _ = lsac_triton(D_i, z_i)
+
+                # Convert HWC -> CHW so the batch is [B, 3, H, W]
+                E_i = E_i.permute(2, 0, 1).contiguous()
+
+                E_batch.append(E_i)
+
+        E = torch.stack(E_batch, dim=0)
+
+        print("LSAC output:", E.shape, E.device)
+
+        # ---------------------------------
+        # 4. Estimate and refine beta
+        # ---------------------------------
 
         beta0 = coarse_beta_gpu(E, depth)
-
+        print("E:", E.shape)
+        print("depth:", depth.shape)
+        # print("beta_params:", beta_params.shape)
+        # print("beta_map:", beta_map.shape)
+        print("corrected:", corrected.shape)
         beta_params, _ = refine_beta_batch(depth, E, beta0)
 
         beta_map = beta_model_gpu(depth, beta_params)
+
+        # ---------------------------------
+        # 5. Reconstruct scene
+        # ---------------------------------
 
         J = reconstruct_scene_gpu(corrected, depth, beta_map)
 

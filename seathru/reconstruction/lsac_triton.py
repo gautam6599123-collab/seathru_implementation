@@ -8,6 +8,34 @@ import triton.language as tl
 
 
 @triton.jit
+def _is_finite(x):
+    return (x == x) & (tl.abs(x) < float("inf"))
+
+
+# %%
+
+
+@triton.jit
+def _neighbour_valid(D, nmask, zn, ni, zc, EPS):
+    nd0 = tl.load(D + 3 * ni + 0, mask=nmask, other=0.0)
+    nd1 = tl.load(D + 3 * ni + 1, mask=nmask, other=0.0)
+    nd2 = tl.load(D + 3 * ni + 2, mask=nmask, other=0.0)
+
+    return (
+        nmask
+        & _is_finite(zn)
+        & (zn > 0.0)
+        & _is_finite(nd0)
+        & _is_finite(nd1)
+        & _is_finite(nd2)
+        & (tl.abs(zc - zn) <= EPS)
+    )
+
+
+# %%
+
+
+@triton.jit
 def _lsac_step(
     D,
     Z,
@@ -35,11 +63,11 @@ def _lsac_step(
 
     center_valid = (
         inside
-        & tl.is_finite(zc)
+        & _is_finite(zc)
         & (zc > 0.0)
-        & tl.is_finite(d0)
-        & tl.is_finite(d1)
-        & tl.is_finite(d2)
+        & _is_finite(d0)
+        & _is_finite(d1)
+        & _is_finite(d2)
     )
 
     # Previous iteration's centre value
@@ -64,25 +92,10 @@ def _lsac_step(
     zl = tl.load(Z + idx_left, mask=mask_left, other=0.0)
     zr = tl.load(Z + idx_right, mask=mask_right, other=0.0)
 
-    def neighbour_valid(nmask, zn, ni):
-        nd0 = tl.load(D + 3 * ni + 0, mask=nmask, other=0.0)
-        nd1 = tl.load(D + 3 * ni + 1, mask=nmask, other=0.0)
-        nd2 = tl.load(D + 3 * ni + 2, mask=nmask, other=0.0)
-
-        return (
-            nmask
-            & tl.is_finite(zn)
-            & (zn > 0.0)
-            & tl.is_finite(nd0)
-            & tl.is_finite(nd1)
-            & tl.is_finite(nd2)
-            & (tl.abs(zc - zn) <= EPS)
-        )
-
-    good_up = center_valid & neighbour_valid(mask_up, zu, idx_up)
-    good_down = center_valid & neighbour_valid(mask_down, zd, idx_down)
-    good_left = center_valid & neighbour_valid(mask_left, zl, idx_left)
-    good_right = center_valid & neighbour_valid(mask_right, zr, idx_right)
+    good_up = center_valid & _neighbour_valid(D, mask_up, zu, idx_up, zc, EPS)
+    good_down = center_valid & _neighbour_valid(D, mask_down, zd, idx_down, zc, EPS)
+    good_left = center_valid & _neighbour_valid(D, mask_left, zl, idx_left, zc, EPS)
+    good_right = center_valid & _neighbour_valid(D, mask_right, zr, idx_right, zc, EPS)
 
     # Load previous-iteration illuminant values from good neighbours
     au0 = tl.load(A + 3 * idx_up + 0, mask=good_up, other=0.0)
