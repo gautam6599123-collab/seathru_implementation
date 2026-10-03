@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 from logger import setup_logger
-from seathru import (
+from reference.seathru import (
     coarse_beta,
     estimate_backscatter,
     gray_world,
