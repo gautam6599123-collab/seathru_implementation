@@ -1,129 +1,73 @@
-# Sea-Thru: A Method for Removing Water from Underwater Images
-An implementation of the method described in: `Akkaynak, D. and Treibitz, T. "Sea-Thru: A Method for Removing Water
-from Underwater Images." CVPR, 2019.`
+# Sea-Thru: Underwater Image Restoration
 
-This repository contains a physics-based implementation of Sea-Thru for
-estimating and removing the veiling-light/backscatter component in
-underwater images, together with GPU-oriented components for processing.
-Overview
-Underwater images are affected by wavelength-dependent attenuation and
-backscatter. Sea-Thru uses scene depth and an image formation model to
-estimate the backscatter contribution and recover a representation of
-the direct signal.
-The implementation includes:
-- RGB image and depth-map loading.
-- Extraction of dark pixels across depth intervals.
-- Nonlinear fitting of the backscatter model independently for each
-  color channel.
-- Construction of a full-resolution backscatter map and subtraction
-  from the observed image.
-- GPU-oriented implementations for batched processing, depth-aware
-  refinement, and reconstruction.
-The repository is an implementation/research project, not an official
-release by the authors of the Sea-Thru paper.
-Method
-Let (I) denote the observed RGB image, (z) the scene depth, (B) the
-estimated backscatter, and (D) the direct signal. The implementation
-estimates the backscatter using the model
-z}`\right`{=tex}) + J' e^{-`\beta`{=tex}^{D'}z}, \]
+Implementation of the Sea-Thru method by Akkaynak and Treibitz (CVPR 2019).
 
-where the four parameters are fitted separately for each color channel.
+Sea-Thru uses scene depth and an underwater image formation model to estimate backscatter and recover the direct signal.
 
-The estimated backscatter is subtracted from the observed image to
-obtain the direct component:
+## Features
 
-\[ D = `\max`{=tex}(I-B,,0). \]
+- Load RGB images and depth maps.
+- Sample dark pixels across depth intervals.
+- Fit backscatter parameters for each color channel.
+- Estimate and remove backscatter.
+- Refine depth-aware parameters and reconstruct the scene.
+- GPU processing with PyTorch and Triton.
 
-The code also contains depth-aware processing and reconstruction
-components. See the source modules for implementation details and
-current interfaces.
+This is an independent implementation, not an official release by the paper's authors.
 
-## Repository contents
+## Method
 
-The main implementation files include:
+The observed image `I` contains direct signal and backscatter. The implementation estimates the backscatter map `B` from depth `z`, then computes:
 
-| File                | Description                                                                                                                                   |
-|---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| `seathru.py`        | NumPy/SciPy reference implementation of image/depth loading, dark-sample extraction, backscatter fitting, and backscatter estimation/removal. |
-| `dataset.py`        | Dataset utilities for pairing and loading image/depth data.                                                                                   |
-| `sampling.py`       | Backscatter model functions                                                                                                                   |
-| `fitting.py`        | Sampling utilities for selecting observations used in parameter estimation.                                                                   |
-| `fit_b_channel.py`  | Backscatter channel-fitting implementation                                                                                                    |
-| `beta_map.py`       | Coarse estimation and refinement of attenuation-related parameters                                                                            |
-| `lsac_triton.py`    | Triton implementation of the LSAC refinement step.                                                                                            |
-| `reconstruction.py` | Scene reconstruction from the direct signal, depth, and estimated parameters.                                                                 |
-| `prefetcher.py`     | CUDA batch prefetching utilities                                                                                                              |
-| `functions.py`      | Supporting functions                                                                                                                          |
-| `example_gpu.py`    | GPU example/entry point                                                                                                                       |
+`D = max(I - B, 0)`
 
-The repository is under active development; function signatures and the
-recommended execution path may change.
+See the source code for the model and reconstruction details.
+
+## Main files
+
+| File                | Purpose                           |
+| ------------------- | --------------------------------- |
+| `seathru.py`        | NumPy/SciPy implementation        |
+| `dataset.py`        | Image and depth loading           |
+| `sampling.py`       | Sampling observations for fitting |
+| `fitting.py`        | Parameter fitting                 |
+| `fit_b_channel.py`  | Per-channel backscatter fitting   |
+| `beta_map.py`       | Attenuation parameter estimation  |
+| `lsac_triton.py`    | Triton LSAC refinement            |
+| `reconstruction.py` | Scene reconstruction              |
+| `prefetcher.py`     | CUDA batch prefetching            |
+| `example_gpu.py`    | GPU example                       |
+
+The code is under development, so interfaces may change.
 
 ## Requirements
 
-The implementation uses Python and scientific-computing/deep-learning
-libraries. Depending on which path you run, you may need:
+Depending on the implementation path, you may need:
 
--   Python
--   NumPy
--   SciPy
--   ImageIO
--   tifffile
--   PyTorch
--   TorchCodec
--   Triton
--   A compatible NVIDIA GPU and CUDA-enabled PyTorch installation for
-    the GPU/Triton components
-
-Install the versions appropriate for your environment. GPU support
-depends on compatibility between the NVIDIA driver, CUDA, PyTorch, and
-Triton.
+- Python, NumPy, SciPy
+- ImageIO and `tifffile`
+- PyTorch and TorchCodec
+- Triton
+- NVIDIA GPU with a compatible CUDA/PyTorch setup for GPU processing
 
 ## Data
 
-The implementation expects paired RGB images and depth maps. The dataset
-loader accepts pairs of image and depth paths. The GPU dataset
-implementation reads RGB images using TorchCodec and depth maps using
-`tifffile`.
+Provide paired RGB images and depth maps. The current loader:
 
-Important data assumptions in the current code:
+- Keeps the first three image channels.
+- Normalizes integer images to `[0, 1]`.
+- Converts depth maps to `float32`.
+- Treats zero depth values as invalid (`NaN`).
 
--   Images must contain at least three color channels; the reference
-    loader discards channels beyond RGB.
--   Integer images are normalized to the range (\[0,1\]).
--   Depth maps are converted to `float32`.
--   A depth value of zero is treated as invalid and converted to `NaN`.
--   Depth values are otherwise kept on their original scale. Ensure that
-    the depth units and scale are consistent with the model and dataset.
-
-You will need to prepare the image/depth path pairs for your dataset.
-The repository does not prescribe a universal directory structure.
+Depth units and scale must be consistent with the model.
 
 ## Usage
 
-### NumPy/SciPy reference implementation
+### NumPy/SciPy
 
-The `seathru.py` module provides the reference-style processing
-functions, including:
+`seathru.py` provides functions for loading data, sampling dark pixels, fitting backscatter, and removing it.
 
--   `load_img(path)` and `load_depth(path)`
--   `dark_samples(I, z)`
--   `fit_B_channel(zs, ys, ...)`
--   `estimate_backscatter(I, z)`
--   `B_map(z, params)`
--   `remove_backscatter(I, z, params)`
-
-A typical processing sequence is:
-
-1.  Load an RGB image and its corresponding depth map.
-2.  Estimate backscatter parameters from dark samples.
-3.  Generate the backscatter map.
-4.  Subtract the estimated backscatter from the observed image.
-5.  Inspect and save the resulting direct-signal image.
-
-Example:
-
-``` python
+```python
 from pathlib import Path
 from seathru import load_img, load_depth, estimate_backscatter, remove_backscatter
 
@@ -134,40 +78,23 @@ params, depths, samples = estimate_backscatter(image, depth)
 backscatter, direct = remove_backscatter(image, depth, params)
 ```
 
-The exact import path may need to be adjusted depending on how the
-repository is installed or invoked.
+Adjust the import path to match your setup.
 
-### GPU implementation
+### GPU
 
-GPU-oriented components are provided in separate modules. They use
-PyTorch tensors and, for LSAC refinement, Triton. Refer to
-`example_gpu.py` and the function definitions in the relevant modules
-for the current invocation details.
+The GPU implementation uses PyTorch, with Triton for LSAC refinement. See `example_gpu.py` and the relevant module functions for the current pipeline.
 
-For GPU execution:
+## Notes
 
-1.  Install a CUDA-enabled PyTorch build compatible with your system.
-2.  Install a compatible Triton version.
-3.  Prepare paired image/depth paths.
-4.  Construct the dataset and data loader using the repository's current interfaces.
-5.  Run the GPU processing pipeline and inspect intermediate and final outputs.
-
-No performance figures are claimed here; runtime depends on image
-resolution, GPU, software versions, and algorithm settings.
-
-## Notes and limitations
-
--   This repository implements a research method and should be treated as experimental software.
--   Results depend on the quality and scale of the depth maps, image normalization, and the validity of the model assumptions.
--   Invalid depth values are represented as `NaN`; downstream operations must handle them appropriately.
--   The NumPy/SciPy and GPU implementations may differ in numerical behavior and should be compared when validating changes.
--   Evaluate results visually and, where suitable reference images are available, with quantitative metrics. A visually plausible output alone does not establish physical accuracy.
+- Results depend on depth quality, image scaling, and model assumptions.
+- The NumPy/SciPy and GPU paths may differ numerically.
+- Compare outputs visually and use quantitative metrics when reference images are available.
 
 ## Citation
 
-If you use this repository, please cite it as:
+Please cite this repository:
 
-``` bibtex
+```bibtex
 @misc{seathru_implementation,
   author       = {Gautam Singh},
   title        = {A Sea-Thru Implementation},
@@ -178,10 +105,9 @@ If you use this repository, please cite it as:
 }
 ```
 
-Please also cite the original Sea-Thru paper when referring to the
-method:
+Also cite the original paper:
 
-``` bibtex
+```bibtex
 @inproceedings{akkaynak2019sea,
   title     = {Sea-Thru: A Method for Removing Water From Underwater Images},
   author    = {Akkaynak, Derya and Treibitz, Tali},
@@ -192,5 +118,4 @@ method:
 
 ## Acknowledgements
 
-This project is based on the Sea-Thru method proposed by Derya Akkaynak
-and Tali Treibitz.
+Based on the Sea-Thru method by Derya Akkaynak and Tali Treibitz.
